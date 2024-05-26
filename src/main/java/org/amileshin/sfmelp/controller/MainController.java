@@ -16,9 +16,19 @@ import java.util.List;
 public class MainController {
     private final MainService mainService;
 
-    @PostMapping("/getConnect")
-    public ResponseEntity<List<String>> getConnect(@RequestBody ConnectInfoDTO info) {
-        return ResponseEntity.ok().body(mainService.getConnect(info));
+    @PostMapping("/getTestConnect")
+    public ResponseEntity<Void> getTestConnect(@RequestBody ConnectInfoDTO info) {
+        return mainService.getTestConnect(info)? ResponseEntity.ok().build(): ResponseEntity.badRequest().build();
+    }
+
+    @PostMapping("/getTables")
+    public ResponseEntity<List<String>> getAllTablesFromDatabase(@RequestBody ConnectInfoDTO info) {
+        List<String> tables = mainService.getAllTablesFromDatabase(info);
+        if (tables != null) {
+            return ResponseEntity.ok().body(mainService.getAllTablesFromDatabase(info));
+        } else {
+            return ResponseEntity.badRequest().build();
+        }
     }
 
     @GetMapping("/healthy")

@@ -11,5 +11,6 @@ public class ConnectInfoDTO {
     private String database;
     private String host;
     private int port;
-
+    private String username;
+    private String password;
 }
