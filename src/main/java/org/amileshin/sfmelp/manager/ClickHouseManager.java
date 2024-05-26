@@ -17,12 +17,20 @@ import java.util.List;
 public class ClickHouseManager {
     private static final String DATABASE = "ClickHouse";
 
+    public Connection getConnectionToDatabase(ConnectInfoDTO info) throws SQLException {
+        if (info.getUsername() == null || info.getPassword() == null) {
+            return DriverManager.getConnection(ComposingUtils.getDatabaseUrlFromConnectInfoDTO(DATABASE, info));
+        } else {
+            return DriverManager.getConnection(ComposingUtils.getDatabaseUrlFromConnectInfoDTO(DATABASE, info),
+                    info.getUsername(), info.getPassword());
+        }
+    }
+
     public void getTestConnection(ConnectInfoDTO info) throws DatabaseConnectException {
-        log.info("Attempting to connect to database {} as user {}",
-                ComposingUtils.getDatabaseUrlFromConnectInfoDTO(DATABASE, info), info.getUsername());
+        log.info("Attempting to connect to database {}",
+                ComposingUtils.getDatabaseUrlFromConnectInfoDTO(DATABASE, info));
         try {
-            DriverManager.getConnection(ComposingUtils.getDatabaseUrlFromConnectInfoDTO(DATABASE, info),
-                    info.getUsername(), info.getPassword()).close();
+            this.getConnectionToDatabase(info).close();
             log.info("Connection is successful");
         } catch (SQLException e) {
             log.info("Connection failed: {}", e.getMessage());
@@ -33,11 +41,11 @@ public class ClickHouseManager {
 
     public List<String> listDatabases(ConnectInfoDTO info) throws DatabaseConnectException {
         try {
-            Connection connect = DriverManager.getConnection(
-                    ComposingUtils.getDatabaseUrlFromConnectInfoDTO(DATABASE, info),
-                    info.getUsername(), info.getPassword());
+            Connection connect = this.getConnectionToDatabase(info);
             Statement statement = connect.createStatement();
-            ResultSet resultSet = statement.executeQuery("select name from system.tables where database='" + info.getDatabase() + "'");
+            ResultSet resultSet = statement.executeQuery(
+                    "select name from system.tables " +
+                            "where database='" + info.getDatabase() + "'");
             connect.close();
 
             List<String> tables = new ArrayList<>();
