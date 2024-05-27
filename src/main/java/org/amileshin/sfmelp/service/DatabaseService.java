@@ -12,7 +12,7 @@ import java.util.List;
 
 @RequiredArgsConstructor
 @Service
-public class MainService {
+public class DatabaseService {
     private final ClickHouseManager clickHouseManager;
 
     public boolean getTestConnect(ConnectInfoDTO info) {

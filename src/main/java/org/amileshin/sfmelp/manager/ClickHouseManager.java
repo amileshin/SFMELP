@@ -46,12 +46,13 @@ public class ClickHouseManager {
             ResultSet resultSet = statement.executeQuery(
                     "select name from system.tables " +
                             "where database='" + info.getDatabase() + "'");
-            connect.close();
+
 
             List<String> tables = new ArrayList<>();
             while (resultSet.next()) {
                 tables.add(resultSet.getString("name"));
             }
+            connect.close();
             return tables;
         } catch (SQLException e) {
             log.info("Load data from DB {} failed: {}", ComposingUtils.getDatabaseUrlFromConnectInfoDTO(DATABASE,
