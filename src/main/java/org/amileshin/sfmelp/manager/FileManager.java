@@ -6,8 +6,10 @@ import org.amileshin.sfmelp.config.TestFileConfig;
 import org.springframework.stereotype.Component;
 import org.springframework.util.ResourceUtils;
 
-import java.io.File;
-import java.io.FileNotFoundException;
+import java.io.*;
+import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.List;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -22,10 +24,19 @@ public class FileManager {
     public long getTestFileSize() {
         try {
             File testFile = this.getTestFile();
-            return testFile.length();
-        } catch (FileNotFoundException e) {
-            log.error("Test file cann't be load: {}", e.getMessage());
+            return new String(Files.readAllBytes(testFile.toPath())).replace("\n", "").length();
+        } catch (IOException e) {
+            log.error("Test file can't be load: {}", e.getMessage());
             return 0;
+        }
+    }
+
+    public List<String> loadLogsForTest()  {
+        try {
+            return Files.readAllLines(this.getTestFile().toPath());
+        } catch (IOException e) {
+            log.error("Test file can't be load: {}", e.getMessage());
+            return null;
         }
     }
 }

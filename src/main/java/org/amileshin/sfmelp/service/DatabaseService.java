@@ -33,4 +33,8 @@ public class DatabaseService {
 
         return clickHouseManager.listDatabases(info);
     }
+
+    public void loadLogsToDatabase(ConnectInfoDTO info, String table, List<String> logs) {
+        clickHouseManager.loadLogsToDatabase(info, table, logs);
+    }
 }

@@ -61,4 +61,41 @@ public class ClickHouseManager {
                     info));
         }
     }
+
+    public void loadLogsToDatabase(ConnectInfoDTO info, String table, List<String> logs) throws DatabaseConnectException {
+        try {
+            Connection connect = this.getConnectionToDatabase(info);
+            Statement statement = connect.createStatement();
+            statement.executeQuery(ComposingUtils.getSQLRequestToLoadLogToDatabase(info.getDatabase(), table, logs));
+
+            connect.close();
+        } catch (SQLException e) {
+            log.info("Load data to DB {} failed: {}", ComposingUtils.getDatabaseUrlFromConnectInfoDTO(DATABASE,
+                    info), e.getMessage());
+            throw new DatabaseConnectException(DATABASE, ComposingUtils.getDatabaseUrlFromConnectInfoDTO(DATABASE,
+                    info));
+        }
+    }
+
+    public List<String> loadLogsFromDatabase(ConnectInfoDTO info, String table) throws DatabaseConnectException {
+        try {
+            Connection connect = this.getConnectionToDatabase(info);
+            Statement statement = connect.createStatement();
+
+            ResultSet result = statement.executeQuery(ComposingUtils
+                    .getSQLRequestToLoadLogFromDatabase(info.getDatabase(), table));
+
+            List<String> logs = new ArrayList<>();
+            while (result.next()) {
+                logs.add(result.getString("name"));
+            }
+            connect.close();
+            return logs;
+        } catch (SQLException e) {
+            log.info("Load data from DB {} failed: {}", ComposingUtils.getDatabaseUrlFromConnectInfoDTO(DATABASE,
+                    info), e.getMessage());
+            throw new DatabaseConnectException(DATABASE, ComposingUtils.getDatabaseUrlFromConnectInfoDTO(DATABASE,
+                    info));
+        }
+    }
 }
