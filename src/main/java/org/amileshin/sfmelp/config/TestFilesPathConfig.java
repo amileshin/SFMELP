@@ -7,7 +7,6 @@ import org.springframework.context.annotation.Configuration;
 @Data
 @Configuration
 @ConfigurationProperties(prefix="sfmelp.files")
-public class TestFileConfig {
-    private String file;
+public class TestFilesPathConfig {
     private String path;
 }

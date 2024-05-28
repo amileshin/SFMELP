@@ -7,7 +7,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
-public class ConnectInfoDTO {
+public class ConnectionDB {
     private String database;
     private String host;
     private int port;
