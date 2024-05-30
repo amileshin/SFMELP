@@ -2,8 +2,11 @@ package org.amileshin.sfmelp.manager;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.amileshin.sfmelp.exception.DatabaseConnectException;
-import org.amileshin.sfmelp.model.dto.ConnectInfoDTO;
+import org.amileshin.sfmelp.exception.database.DatabaseAccessException;
+import org.amileshin.sfmelp.exception.database.DatabaseConnectException;
+import org.amileshin.sfmelp.exception.database.DatabaseException;
+import org.amileshin.sfmelp.exception.database.DatabaseSQLExecuteException;
+import org.amileshin.sfmelp.model.dto.ConnectionDB;
 import org.amileshin.sfmelp.utils.ComposingUtils;
 import org.springframework.stereotype.Component;
 
@@ -17,85 +20,101 @@ import java.util.List;
 public class ClickHouseManager {
     private static final String DATABASE = "ClickHouse";
 
-    public Connection getConnectionToDatabase(ConnectInfoDTO info) throws SQLException {
-        if (info.getUsername() == null || info.getPassword() == null) {
-            return DriverManager.getConnection(ComposingUtils.getDatabaseUrlFromConnectInfoDTO(DATABASE, info));
-        } else {
-            return DriverManager.getConnection(ComposingUtils.getDatabaseUrlFromConnectInfoDTO(DATABASE, info),
-                    info.getUsername(), info.getPassword());
-        }
-    }
-
-    public void getTestConnection(ConnectInfoDTO info) throws DatabaseConnectException {
-        log.info("Attempting to connect to database {}",
-                ComposingUtils.getDatabaseUrlFromConnectInfoDTO(DATABASE, info));
+    public Connection getConnectionToDatabase(ConnectionDB info) throws DatabaseException {
         try {
-            this.getConnectionToDatabase(info).close();
-            log.info("Connection is successful");
-        } catch (SQLException e) {
-            log.info("Connection failed: {}", e.getMessage());
-            throw new DatabaseConnectException(DATABASE, ComposingUtils.getDatabaseUrlFromConnectInfoDTO(DATABASE,
-                    info));
-        }
-    }
-
-    public List<String> listDatabases(ConnectInfoDTO info) throws DatabaseConnectException {
-        try {
-            Connection connect = this.getConnectionToDatabase(info);
-            Statement statement = connect.createStatement();
-            ResultSet resultSet = statement.executeQuery(
-                    "select name from system.tables " +
-                            "where database='" + info.getDatabase() + "'");
-
-
-            List<String> tables = new ArrayList<>();
-            while (resultSet.next()) {
-                tables.add(resultSet.getString("name"));
+            Connection con;
+            if (info.getUsername() == null || info.getPassword() == null) {
+                con = DriverManager.getConnection(ComposingUtils.getDatabaseUrlFromConnectInfoDTO(DATABASE, info));
+                log.info("Connect to database {} successfully",
+                        ComposingUtils.getDatabaseUrlFromConnectInfoDTO(DATABASE, info));
+            } else {
+                con = DriverManager.getConnection(ComposingUtils.getDatabaseUrlFromConnectInfoDTO(DATABASE, info),
+                        info.getUsername(), info.getPassword());
+                log.info("Connect to database {} by user {} successfully",
+                        ComposingUtils.getDatabaseUrlFromConnectInfoDTO(DATABASE, info), info.getUsername());
             }
-            connect.close();
-            return tables;
+            return con;
         } catch (SQLException e) {
-            log.info("Load data from DB {} failed: {}", ComposingUtils.getDatabaseUrlFromConnectInfoDTO(DATABASE,
-                    info), e.getMessage());
-            throw new DatabaseConnectException(DATABASE, ComposingUtils.getDatabaseUrlFromConnectInfoDTO(DATABASE,
-                    info));
+            log.error("Failed to get database {} connection: {}",
+                    ComposingUtils.getDatabaseUrlFromConnectInfoDTO(DATABASE, info), e.getMessage());
+            throw new DatabaseAccessException(DATABASE, ComposingUtils.getDatabaseUrlFromConnectInfoDTO(DATABASE, info));
         }
     }
 
-    public void loadLogsToDatabase(ConnectInfoDTO info, String table, List<String> logs) throws DatabaseConnectException {
+    private Statement getStatementFromConnection(ConnectionDB info, Connection connection) throws DatabaseAccessException {
         try {
-            Connection connect = this.getConnectionToDatabase(info);
-            Statement statement = connect.createStatement();
-            statement.executeQuery(ComposingUtils.getSQLRequestToLoadLogToDatabase(info.getDatabase(), table, logs));
-
-            connect.close();
+            return connection.createStatement();
         } catch (SQLException e) {
-            log.info("Load data to DB {} failed: {}", ComposingUtils.getDatabaseUrlFromConnectInfoDTO(DATABASE,
-                    info), e.getMessage());
-            throw new DatabaseConnectException(DATABASE, ComposingUtils.getDatabaseUrlFromConnectInfoDTO(DATABASE,
-                    info));
+            log.error("Failed to get database {} access: {}",
+                    ComposingUtils.getDatabaseUrlFromConnectInfoDTO(DATABASE, info), e.getMessage());
+            throw new DatabaseAccessException(DATABASE, ComposingUtils.getDatabaseUrlFromConnectInfoDTO(DATABASE, info));
         }
     }
 
-    public List<String> loadLogsFromDatabase(ConnectInfoDTO info, String table) throws DatabaseConnectException {
+    public long getTimeForLoadLogsToDatabase(List<String> logs, String table, ConnectionDB info) throws DatabaseConnectException {
         try {
-            Connection connect = this.getConnectionToDatabase(info);
-            Statement statement = connect.createStatement();
+            Connection con = getConnectionToDatabase(info);
+            Statement statement = this.getStatementFromConnection(info, con);
+            statement.execute(ComposingUtils.getSQLRequestToClearDatabase(info.getDatabase(), table));
 
-            ResultSet result = statement.executeQuery(ComposingUtils
-                    .getSQLRequestToLoadLogFromDatabase(info.getDatabase(), table));
+            String sql = ComposingUtils.getSQLRequestToLoadLogToDatabase(info.getDatabase(), table, logs);
+            long start = System.nanoTime();
+            statement.execute(sql);
+            long finish = System.nanoTime();
 
-            List<String> logs = new ArrayList<>();
-            while (result.next()) {
-                logs.add(result.getString("name"));
+            statement.close();
+            con.close();
+            return finish - start;
+        } catch (SQLException e) {
+            log.error("Failed to execute request in database {}, message: {}",
+                    ComposingUtils.getDatabaseUrlFromConnectInfoDTO(DATABASE, info), e.getMessage());
+            throw new DatabaseSQLExecuteException(ComposingUtils.getDatabaseUrlFromConnectInfoDTO(DATABASE, info),
+                    e.getMessage());
+        }
+    }
+
+    public long getTimeForLoadLogsFromDatabase(String table, ConnectionDB info) throws DatabaseConnectException {
+        try {
+            Connection con = getConnectionToDatabase(info);
+            Statement statement = this.getStatementFromConnection(info, con);
+
+            long start = System.nanoTime();
+            statement.executeQuery(ComposingUtils.getSQLRequestToLoadLogFromDatabase(info.getDatabase(), table));
+            long finish = System.nanoTime();
+
+            statement.close();
+            con.close();
+            return finish - start;
+        } catch (SQLException e) {
+            log.error("Failed to execute request in database {}, message: {}",
+                    ComposingUtils.getDatabaseUrlFromConnectInfoDTO(DATABASE, info), e.getMessage());
+            throw new DatabaseSQLExecuteException(ComposingUtils.getDatabaseUrlFromConnectInfoDTO(DATABASE, info),
+                    e.getMessage());
+        }
+    }
+
+    public long getDatabaseByteSize(String tableName, ConnectionDB info) throws DatabaseException {
+        try {
+            Connection con = getConnectionToDatabase(info);
+            Statement statement = this.getStatementFromConnection(info, con);
+
+            statement.execute(ComposingUtils.CLEAR_DATABASE_CACHE);
+            ResultSet set = statement.executeQuery(ComposingUtils.getSQLRequestToGetByteForTable(info.getDatabase(),
+                    tableName));
+
+            long bytes = 0;
+            while (set.next()) {
+                bytes = set.getLong(1);
             }
-            connect.close();
-            return logs;
+            set.close();
+            statement.close();
+            con.close();
+            return bytes;
         } catch (SQLException e) {
-            log.info("Load data from DB {} failed: {}", ComposingUtils.getDatabaseUrlFromConnectInfoDTO(DATABASE,
-                    info), e.getMessage());
-            throw new DatabaseConnectException(DATABASE, ComposingUtils.getDatabaseUrlFromConnectInfoDTO(DATABASE,
-                    info));
+            log.error("Failed to execute request in database {}, message: {}",
+                    ComposingUtils.getDatabaseUrlFromConnectInfoDTO(DATABASE, info), e.getMessage());
+            throw new DatabaseSQLExecuteException(ComposingUtils.getDatabaseUrlFromConnectInfoDTO(DATABASE, info),
+                    e.getMessage());
         }
     }
 }

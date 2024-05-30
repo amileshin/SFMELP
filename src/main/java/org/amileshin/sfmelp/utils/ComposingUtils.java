@@ -26,6 +26,10 @@ public class ComposingUtils {
         return "SELECT name FROM " + database + "." + table;
     }
 
+    public static String getSQLRequestToClearDatabase(String database, String table) {
+        return "DELETE FROM " + database + "." + table;
+    }
+
     public static String getSQLRequestToGetByteForTable(String database, String table) {
         return "SELECT total_bytes FROM system.tables WHERE database = '" + database + "' AND name = '" + table + "'";
     }
