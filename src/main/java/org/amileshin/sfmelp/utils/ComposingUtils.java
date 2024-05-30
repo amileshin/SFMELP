@@ -22,6 +22,12 @@ public class ComposingUtils {
                         .collect(Collectors.joining(","));
     }
 
+    public static String getSQLRequestToQueryTime(String database, String table, String operation) {
+        return "SELECT query_duration_ms FROM system.query_log WHERE type = 2 AND  has(databases, '" + database + "')" +
+                "AND has(tables, '" + database + '.' + table + "') AND startsWith(lower(query), '" + operation + "') " +
+                "ORDER BY (event_time_microseconds) DESC";
+    }
+
     public static String getSQLRequestToLoadLogFromDatabase(String database, String table) {
         return "SELECT * FROM " + database + "." + table;
     }

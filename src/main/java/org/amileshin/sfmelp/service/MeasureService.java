@@ -15,7 +15,7 @@ public class MeasureService {
     private final ClickHouseManager dbManager;
     private final FileManager fileManager;
 
-    public ResultInfo getMeasure(MeasureInfo measureInfo) {
+    public ResultInfo getMeasure(MeasureInfo measureInfo) throws InterruptedException {
         try {
             log.info("Start Measure");
             ResultInfo resultInfo = new ResultInfo();
@@ -30,8 +30,8 @@ public class MeasureService {
             double compressionSize = dbManager.getDatabaseByteSize(measureInfo.getTable(), measureInfo.getDb());
             double fileSize = fileManager.getFileSize(measureInfo.getFile());
 
-            resultInfo.setCompressionTime(fileSize * 1000000000 / (compressionTime * 1048576));
-            resultInfo.setDecompressionTime(fileSize * 1000000000 / (decompressionTime * 1048576));
+            resultInfo.setCompressionTime(fileSize * 1000 / (compressionTime * 1048576));
+            resultInfo.setDecompressionTime(fileSize * 1000 / (decompressionTime * 1048576));
             resultInfo.setRatio(compressionSize / fileSize * 100.0);
 
             log.info("Finish Measure");

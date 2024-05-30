@@ -50,20 +50,29 @@ public class ClickHouseManager {
         }
     }
 
-    public long getTimeForLoadLogsToDatabase(List<String> logs, String table, ConnectionDB info) throws DatabaseConnectException {
+    private long getTimeForLastQuery(Statement statement, String db, String table, String operation) throws SQLException {
+        ResultSet set = statement.executeQuery(ComposingUtils.getSQLRequestToQueryTime(db, table, operation));
+        set.next();
+        long res = set.getLong(1);
+        set.close();
+        return res;
+    }
+
+    public long getTimeForLoadLogsToDatabase(List<String> logs, String table, ConnectionDB info) throws DatabaseConnectException, InterruptedException {
         try {
             Connection con = getConnectionToDatabase(info);
             Statement statement = this.getStatementFromConnection(info, con);
             statement.execute(ComposingUtils.getSQLRequestToClearDatabase(info.getDatabase(), table));
 
             String sql = ComposingUtils.getSQLRequestToLoadLogToDatabase(info.getDatabase(), table, logs);
-            long start = System.nanoTime();
-            statement.execute(sql);
-            long finish = System.nanoTime();
+
+            statement.executeUpdate(sql);
+            Thread.sleep(500);
+            long time = this.getTimeForLastQuery(statement, info.getDatabase(), table, "insert");
 
             statement.close();
             con.close();
-            return finish - start;
+            return time;
         } catch (SQLException e) {
             log.error("Failed to execute request in database {}, message: {}",
                     ComposingUtils.getDatabaseUrlFromConnectInfoDTO(DATABASE, info), e.getMessage());
@@ -72,19 +81,20 @@ public class ClickHouseManager {
         }
     }
 
-    public long getTimeForLoadLogsFromDatabase(String table, ConnectionDB info) throws DatabaseConnectException {
+    public long getTimeForLoadLogsFromDatabase(String table, ConnectionDB info) throws DatabaseConnectException, InterruptedException {
         try {
             Connection con = getConnectionToDatabase(info);
             Statement statement = this.getStatementFromConnection(info, con);
             statement.execute(ComposingUtils.CLEAR_DATABASE_CACHE);
 
-            long start = System.nanoTime();
+
             statement.executeQuery(ComposingUtils.getSQLRequestToLoadLogFromDatabase(info.getDatabase(), table));
-            long finish = System.nanoTime();
+            Thread.sleep(500);
+            long time = this.getTimeForLastQuery(statement, info.getDatabase(), table, "select");
 
             statement.close();
             con.close();
-            return finish - start;
+            return time;
         } catch (SQLException e) {
             log.error("Failed to execute request in database {}, message: {}",
                     ComposingUtils.getDatabaseUrlFromConnectInfoDTO(DATABASE, info), e.getMessage());
