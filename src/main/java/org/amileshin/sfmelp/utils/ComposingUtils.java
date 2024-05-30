@@ -23,11 +23,11 @@ public class ComposingUtils {
     }
 
     public static String getSQLRequestToLoadLogFromDatabase(String database, String table) {
-        return "SELECT name FROM " + database + "." + table;
+        return "SELECT * FROM " + database + "." + table;
     }
 
     public static String getSQLRequestToClearDatabase(String database, String table) {
-        return "DELETE FROM " + database + "." + table;
+        return "TRUNCATE TABLE " + database + "." + table;
     }
 
     public static String getSQLRequestToGetByteForTable(String database, String table) {

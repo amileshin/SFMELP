@@ -54,7 +54,7 @@ public class FileManager {
     public long getFileSize(String fileName) throws FileManagerConfigPathNoDirectoryException {
         try {
             File file = this.getFile(fileName);
-            return Arrays.toString(Files.readAllBytes(file.toPath())).replace("\n", "").length();
+            return new String(Files.readAllBytes(file.toPath())).replace("\n", "").length();
         } catch (IOException e) {
             log.error("File {} in test files directory {} is not readable", fileName, fileConfig.getPath());
             throw new FileManagerTestFileUnreadableException(fileConfig.getPath());

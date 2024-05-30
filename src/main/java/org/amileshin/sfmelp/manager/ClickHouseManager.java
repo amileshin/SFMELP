@@ -11,7 +11,6 @@ import org.amileshin.sfmelp.utils.ComposingUtils;
 import org.springframework.stereotype.Component;
 
 import java.sql.*;
-import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
@@ -77,6 +76,7 @@ public class ClickHouseManager {
         try {
             Connection con = getConnectionToDatabase(info);
             Statement statement = this.getStatementFromConnection(info, con);
+            statement.execute(ComposingUtils.CLEAR_DATABASE_CACHE);
 
             long start = System.nanoTime();
             statement.executeQuery(ComposingUtils.getSQLRequestToLoadLogFromDatabase(info.getDatabase(), table));
